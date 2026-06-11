@@ -11,10 +11,14 @@ export class AnalyticsService {
     const total = Math.max(applications.length, 1);
     const byStatus = this.countBy(applications.map((application) => application.status));
     const byCountry = this.countBy(applications.map((application) => application.location.split(",").at(-1)?.trim() || "Unknown"));
+    const interviewStatuses: ApplicationStatus[] = [
+      ApplicationStatus.INTERVIEW,
+      ApplicationStatus.TECHNICAL_ROUND,
+      ApplicationStatus.FINAL_ROUND,
+      ApplicationStatus.OFFER
+    ];
     const interviewCount = applications.filter((application) =>
-      [ApplicationStatus.INTERVIEW, ApplicationStatus.TECHNICAL_ROUND, ApplicationStatus.FINAL_ROUND, ApplicationStatus.OFFER].includes(
-        application.status
-      )
+      interviewStatuses.includes(application.status)
     ).length;
     const offerCount = applications.filter((application) => application.status === ApplicationStatus.OFFER).length;
     const responseCount = applications.filter((application) => application.lastContactDate).length;

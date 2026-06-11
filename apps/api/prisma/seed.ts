@@ -1,5 +1,6 @@
 import { PrismaClient, ExperienceLevel, JobType, WorkMode } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -59,6 +60,16 @@ const skills = [
   "Docker"
 ];
 
+const defaultTitles = [
+  "Power Platform Developer",
+  "Power BI Developer",
+  "Data Analyst",
+  "Business Intelligence Analyst",
+  "Python Automation Engineer",
+  "ETL Developer",
+  "Microsoft 365 Consultant"
+];
+
 async function main() {
   const skillRecords = await Promise.all(
     skills.map((name) =>
@@ -69,6 +80,19 @@ async function main() {
       })
     )
   );
+
+  await prisma.user.upsert({
+    where: { email: "demo@visapath.ai" },
+    update: {},
+    create: {
+      email: "demo@visapath.ai",
+      name: "Demo Candidate",
+      passwordHash: await bcrypt.hash("password123", 12),
+      targetTitles: defaultTitles,
+      targetSkills: skills.slice(0, 14),
+      targetCountries: ["United Kingdom", "Germany", "Netherlands", "Ireland", "Canada", "Australia"]
+    }
+  });
 
   for (const [name, code, currency, visaName] of countries) {
     const country = await prisma.country.upsert({

@@ -1,9 +1,9 @@
-import NextAuth from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 const apiBaseUrl = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   providers: [
     Credentials({
@@ -12,6 +12,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: {}
       },
       async authorize(credentials) {
+        if (!credentials?.email || !credentials.password) {
+          return null;
+        }
+
         const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -51,4 +55,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login"
   }
-});
+};

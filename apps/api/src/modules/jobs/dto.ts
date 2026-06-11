@@ -1,6 +1,16 @@
 import { ExperienceLevel, JobType, WorkMode } from "@prisma/client";
 import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
+
+const toStringArray = ({ value }: { value: unknown }) => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => String(item).split(",")).map((item) => item.trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return value;
+};
 
 export class SearchJobsDto {
   @IsString()
@@ -9,11 +19,13 @@ export class SearchJobsDto {
 
   @IsArray()
   @IsString({ each: true })
+  @Transform(toStringArray)
   @IsOptional()
   skills?: string[];
 
   @IsArray()
   @IsString({ each: true })
+  @Transform(toStringArray)
   @IsOptional()
   countries?: string[];
 

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { PrismaService } from "../prisma/prisma.service";
 
 const knownSkills = [
@@ -33,7 +33,8 @@ export class ResumesService {
       throw new BadRequestException("Resume file exceeds the 5MB limit.");
     }
 
-    const parsed = await pdfParse(file.buffer);
+    const parser = new PDFParse({ data: new Uint8Array(file.buffer) });
+    const parsed = await parser.getText().finally(() => parser.destroy());
     const profile = this.extractProfile(parsed.text);
 
     return this.prisma.resume.create({

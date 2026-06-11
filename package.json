@@ -20,5 +20,9 @@
   "engines": {
     "node": ">=20.11.0",
     "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@next/eslint-plugin-next": "^15.5.19",
+    "@typescript-eslint/parser": "^8.61.0"
   }
 }

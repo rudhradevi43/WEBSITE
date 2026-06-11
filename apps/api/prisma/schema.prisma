@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  RECRUITER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEW
+  TECHNICAL_ROUND
+  FINAL_ROUND
+  OFFER
+  REJECTED
+  VISA_PROCESSING
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum JobType {
+  FULL_TIME
+  CONTRACT
+  PART_TIME
+  INTERNSHIP
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+}
+
+enum NotificationType {
+  JOB_MATCH
+  FOLLOW_UP_REQUIRED
+  INTERVIEW_SCHEDULED
+  STATUS_CHANGED
+}
+
+enum ReminderType {
+  FOLLOW_UP
+  INTERVIEW
+  VISA_DEADLINE
+}
+
+enum SavedSearchFrequency {
+  DAILY
+  WEEKLY
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  name           String
+  passwordHash   String?
+  role           Role              @default(USER)
+  targetTitles   String[]          @default([])
+  targetSkills   String[]          @default([])
+  targetCountries String[]         @default([])
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  resumes        Resume[]
+  applications   Application[]
+  savedSearches  SavedSearch[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Resume {
+  id             String   @id @default(cuid())
+  userId         String
+  fileName       String
+  fileUrl        String?
+  rawText        String
+  name           String?
+  email          String?
+  skills         String[] @default([])
+  certifications String[] @default([])
+  experience     Json?
+  education      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Skill {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  category  String?
+  createdAt DateTime @default(now())
+  jobs      Job[]    @relation("JobSkills")
+
+  @@index([category])
+}
+
+model Country {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  code         String        @unique
+  currency     String?
+  visaPrograms VisaProgram[]
+  companies    Company[]
+  jobs         Job[]
+
+  @@index([name])
+}
+
+model VisaProgram {
+  id          String    @id @default(cuid())
+  countryId   String
+  name        String
+  description String
+  officialUrl String?
+  country     Country   @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  companies   Company[] @relation("CompanyVisaPrograms")
+  jobs        Job[]
+
+  @@unique([countryId, name])
+  @@index([countryId])
+}
+
+model Company {
+  id                         String        @id @default(cuid())
+  name                       String
+  countryId                  String
+  website                    String?
+  hiringFrequency            String?
+  sponsorshipHistory         String?
+  sponsorshipConfidenceScore Int           @default(50)
+  techStack                  String[]      @default([])
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+  country                    Country       @relation(fields: [countryId], references: [id])
+  visaPrograms               VisaProgram[] @relation("CompanyVisaPrograms")
+  jobs                       Job[]
+  applications               Application[]
+
+  @@unique([name, countryId])
+  @@index([countryId])
+  @@index([sponsorshipConfidenceScore])
+}
+
+model Job {
+  id                         String          @id @default(cuid())
+  source                     String
+  externalId                 String?
+  companyId                  String?
+  countryId                  String
+  visaProgramId              String?
+  title                      String
+  city                       String?
+  salaryMin                  Int?
+  salaryMax                  Int?
+  currency                   String?
+  description                String
+  applyUrl                   String
+  sponsorshipAvailable       Boolean         @default(false)
+  visaType                   String?
+  workMode                   WorkMode
+  jobType                    JobType         @default(FULL_TIME)
+  experienceLevel            ExperienceLevel @default(MID)
+  matchScore                 Int             @default(0)
+  postedAt                   DateTime
+  createdAt                  DateTime        @default(now())
+  updatedAt                  DateTime        @updatedAt
+  company                    Company?        @relation(fields: [companyId], references: [id])
+  country                    Country         @relation(fields: [countryId], references: [id])
+  visaProgram                VisaProgram?    @relation(fields: [visaProgramId], references: [id])
+  skills                     Skill[]         @relation("JobSkills")
+  applications               Application[]
+
+  @@unique([source, externalId])
+  @@index([countryId, postedAt])
+  @@index([sponsorshipAvailable])
+  @@index([workMode])
+  @@index([experienceLevel])
+}
+
+model Application {
+  id              String            @id @default(cuid())
+  userId          String
+  jobId           String?
+  companyId       String?
+  companyName     String
+  jobTitle        String
+  location        String
+  visaType        String?
+  status          ApplicationStatus @default(SAVED)
+  appliedDate     DateTime?
+  lastContactDate DateTime?
+  recruiterName   String?
+  recruiterEmail  String?
+  notes           String?
+  salary          String?
+  attachments     String[]          @default([])
+  followUpRequired Boolean          @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             Job?              @relation(fields: [jobId], references: [id])
+  company         Company?          @relation(fields: [companyId], references: [id])
+  applicationNotes ApplicationNote[]
+  reminders       Reminder[]
+
+  @@index([userId, status])
+  @@index([appliedDate])
+  @@index([lastContactDate])
+}
+
+model ApplicationNote {
+  id            String      @id @default(cuid())
+  applicationId String
+  body          String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+}
+
+model Reminder {
+  id            String       @id @default(cuid())
+  userId        String
+  applicationId String?
+  type          ReminderType
+  dueAt         DateTime
+  completedAt   DateTime?
+  message       String
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueAt])
+  @@index([applicationId])
+}
+
+model SavedSearch {
+  id          String               @id @default(cuid())
+  userId      String
+  name        String
+  query       Json
+  frequency   SavedSearchFrequency
+  lastRunAt   DateTime?
+  createdAt   DateTime             @default(now())
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([frequency])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+}

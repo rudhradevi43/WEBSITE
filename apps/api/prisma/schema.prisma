@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  RECRUITER
+}
+
+enum RemoteType {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+}
+
+enum JobType {
+  FULL_TIME
+  CONTRACT
+  PART_TIME
+  INTERNSHIP
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEW
+  TECHNICAL_ROUND
+  FINAL_ROUND
+  OFFER
+  REJECTED
+  VISA_PROCESSING
+}
+
+enum NotificationType {
+  MATCHING_JOB
+  FOLLOW_UP_REQUIRED
+  INTERVIEW_SCHEDULED
+  STATUS_CHANGED
+}
+
+enum ReminderType {
+  FOLLOW_UP
+  INTERVIEW
+  VISA_DEADLINE
+  CUSTOM
+}
+
+enum SavedSearchFrequency {
+  DAILY
+  WEEKLY
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String?
+  passwordHash  String?
+  role          Role          @default(USER)
+  countryTarget String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  resumes       Resume[]
+  applications  Application[]
+  savedSearches SavedSearch[]
+  notifications Notification[]
+  auditLogs      AuditLog[]
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Resume {
+  id             String   @id @default(cuid())
+  userId         String
+  fileName       String
+  fileUrl        String?
+  rawText        String   @db.Text
+  parsedName     String?
+  parsedEmail    String?
+  certifications String[]
+  education      Json?
+  experience     Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills         Skill[]  @relation("ResumeSkills")
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Skill {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  resumes   Resume[] @relation("ResumeSkills")
+  jobs      Job[]    @relation("JobSkills")
+  createdAt DateTime @default(now())
+}
+
+model Country {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  isoCode      String        @unique
+  currency     String
+  visaPrograms VisaProgram[]
+  companies    Company[]
+  jobs         Job[]
+
+  @@index([name])
+}
+
+model VisaProgram {
+  id          String    @id @default(cuid())
+  countryId   String
+  name        String
+  description String    @db.Text
+  officialUrl String?
+  companies   Company[] @relation("CompanyVisaPrograms")
+  jobs        Job[]
+  country     Country   @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, name])
+  @@index([countryId])
+}
+
+model Company {
+  id                         String        @id @default(cuid())
+  name                       String
+  countryId                  String
+  website                    String?
+  hiringFrequency            String?
+  sponsorshipHistory         String?       @db.Text
+  sponsorshipConfidenceScore Int           @default(50)
+  techStack                  String[]
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+  country                    Country       @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  visaPrograms               VisaProgram[] @relation("CompanyVisaPrograms")
+  jobs                       Job[]
+
+  @@unique([name, countryId])
+  @@index([sponsorshipConfidenceScore])
+  @@index([countryId])
+}
+
+model Job {
+  id                     String           @id @default(cuid())
+  companyId              String
+  countryId              String
+  visaProgramId          String?
+  source                 String
+  externalId             String?
+  roleTitle              String
+  city                   String
+  description            String           @db.Text
+  salaryMin              Int?
+  salaryMax              Int?
+  currency               String?
+  sponsorshipAvailable   Boolean          @default(false)
+  visaType               String?
+  remoteType             RemoteType       @default(HYBRID)
+  jobType                JobType          @default(FULL_TIME)
+  experienceLevel        ExperienceLevel  @default(MID)
+  applyLink              String
+  datePosted             DateTime
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  company                Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  country                Country          @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  visaProgram            VisaProgram?     @relation(fields: [visaProgramId], references: [id], onDelete: SetNull)
+  skills                 Skill[]          @relation("JobSkills")
+  applications           Application[]
+
+  @@unique([source, externalId])
+  @@index([countryId, sponsorshipAvailable])
+  @@index([roleTitle])
+  @@index([datePosted])
+  @@index([remoteType, jobType, experienceLevel])
+}
+
+model Application {
+  id              String            @id @default(cuid())
+  userId          String
+  jobId           String?
+  company         String
+  jobTitle        String
+  location        String
+  visaType        String?
+  status          ApplicationStatus @default(SAVED)
+  appliedDate     DateTime?
+  lastContactDate DateTime?
+  recruiterName   String?
+  recruiterEmail  String?
+  notes           String?           @db.Text
+  salary          String?
+  attachments     Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             Job?              @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  applicationNotes ApplicationNote[]
+  reminders       Reminder[]
+
+  @@index([userId, status])
+  @@index([appliedDate])
+  @@index([lastContactDate])
+}
+
+model ApplicationNote {
+  id            String      @id @default(cuid())
+  applicationId String
+  body          String      @db.Text
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+}
+
+model Reminder {
+  id            String       @id @default(cuid())
+  applicationId String
+  type          ReminderType @default(FOLLOW_UP)
+  dueAt         DateTime
+  completedAt   DateTime?
+  message       String
+  createdAt     DateTime     @default(now())
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, dueAt])
+  @@index([completedAt])
+}
+
+model SavedSearch {
+  id              String               @id @default(cuid())
+  userId          String
+  name            String
+  query           Json
+  frequency       SavedSearchFrequency @default(DAILY)
+  lastRunAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([frequency, lastRunAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String           @db.Text
+  readAt    DateTime?
+  metadata  Json?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([type, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@index([action])
+}

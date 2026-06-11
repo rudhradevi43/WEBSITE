@@ -1,0 +1,24 @@
+{
+  "name": "visapath-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VisaPath AI full-stack visa sponsorship job tracker platform.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @visapath/api & npm run dev --workspace @visapath/web",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate --workspace @visapath/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace @visapath/api",
+    "prisma:seed": "npm run prisma:seed --workspace @visapath/api"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  }
+}
